@@ -185,6 +185,8 @@ app.config["BOT_DISABLE"]=bool(int(environ.get("BOT_DISABLE", False)))
 
 app.config["TENOR_KEY"]=environ.get("TENOR_KEY",'').lstrip().rstrip()
 
+app.config["GUILD_CREATION_REQ"]=int(environ.get("GUILD_CREATION_REQ", "500").lstrip().rstrip())
+app.config["MAX_GUILD_COUNT"]=int(environ.get("MAX_GUILD_COUNT", "10").lstrip().rstrip())
 
 Markdown(app)
 cache = Cache(app)

@@ -1019,6 +1019,13 @@ class User(Base, Stndrd, Age_times):
 
     @property
     def can_make_guild(self):
+
+        if app.config["GUILD_CREATION_REQ"]==-1:
+            return self.admin_level >=3
+
+        elif app.config["GUILD_CREATION_REQ"]]==0:
+            return self.can_join_gms
+            
         return (self.has_premium or self.admin_level>=3 or self.true_score >= 250 or (self.created_utc <= 1592974538 and self.true_score >= 50)) and self.can_join_gms
 
     @property
