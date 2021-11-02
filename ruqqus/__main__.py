@@ -369,8 +369,8 @@ def drop_connection():
 @app.before_request
 def before_request():
 
-    if request.method.lower() != "get" and app.config["READ_ONLY"]:
-        return jsonify({"error":f"{app.config['SITE_NAME']} is currently in read-only mode."}), 500
+    if request.method.lower() != "get" and app.config["READ_ONLY"] and request.path != "/login":
+        return jsonify({"error":f"{app.config['SITE_NAME']} is currently in read-only mode."}), 400
 
     if app.config["BOT_DISABLE"] and request.headers.get("X-User-Type")=="Bot":
         abort(503)
