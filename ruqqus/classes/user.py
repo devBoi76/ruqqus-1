@@ -1030,7 +1030,11 @@ class User(Base, Stndrd, Age_times):
 
     @property
     def can_join_gms(self):
-        return len([x for x in self.boards_modded if x.is_siegable]) < 10
+
+        if app.config["MAX_GUILD_COUNT"]==0:
+            return True
+        
+        return len([x for x in self.boards_modded if x.is_siegable]) < app.config["MAX_GUILD_COUNT"]
 
     @property
     def can_siege(self):
