@@ -15,7 +15,7 @@ class Subscription(Base):
     is_active = Column(Boolean, default=True)
     get_notifs=Column(Boolean, default=False)
 
-    user = relationship("User", uselist=False)
+    user = relationship("User", uselist=False, back_populates="subscriptions")
     board = relationship("Board", uselist=False)
 
     def __init__(self, *args, **kwargs):
@@ -39,11 +39,13 @@ class Follow(Base):
     user = relationship(
         "User",
         uselist=False,
-        primaryjoin="User.id==Follow.user_id")
+        primaryjoin="User.id==Follow.user_id",
+        back_populates="following")
     target = relationship(
         "User",
         lazy="joined",
-        primaryjoin="User.id==Follow.target_id")
+        primaryjoin="User.id==Follow.target_id",
+        back_populates="followers")
 
     def __init__(self, *args, **kwargs):
         if "created_utc" not in kwargs:

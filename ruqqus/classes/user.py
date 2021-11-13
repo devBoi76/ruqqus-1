@@ -7,6 +7,7 @@ from os import environ
 from secrets import token_hex
 import random
 import pyotp
+import jwt
 
 from ruqqus.helpers.base36 import *
 from ruqqus.helpers.security import *
@@ -47,20 +48,24 @@ class User(Base, Stndrd, Age_times):
         "Submission",
         lazy="dynamic",
         primaryjoin="Submission.author_id==User.id",
-        backref="author_rel")
+        back_populates="author")
     comments = relationship(
         "Comment",
         lazy="dynamic",
-        primaryjoin="Comment.author_id==User.id")
-    votes = relationship("Vote", lazy="dynamic", backref="users")
-    commentvotes = relationship("CommentVote", lazy="dynamic", backref="users")
+        primaryjoin="Comment.author_id==User.id",
+        back_populates="author"
+    )
+    votes = relationship("Vote", lazy="dynamic", back_populates="user")
+    commentvotes = relationship("CommentVote", lazy="dynamic", back_populates="user")
     bio = Column(String, default="")
     bio_html = Column(String, default="")
     _badges = relationship("Badge", lazy="dynamic", backref="user")
     real_id = Column(String, default=None)
     notifications = relationship(
         "Notification",
-        lazy="dynamic")
+        lazy="dynamic",
+        back_populates="user"
+    )
 
     #unread_notifications_relationship=relationship(
     #    "Notification",
@@ -206,6 +211,17 @@ class User(Base, Stndrd, Age_times):
 
         x = pyotp.TOTP(self.mfa_secret)
         return x.verify(token, valid_window=1)
+
+    @property
+    def token(self) -> str:
+        return jwt.encode(
+            {
+                "id": self.id,
+                "login_nonce": self.login_nonce
+            },
+            app.config["SECRET_KEY"],
+            algorithm = "HS256"
+        )
 
     @property
     def mfa_removal_code(self):
@@ -1023,7 +1039,7 @@ class User(Base, Stndrd, Age_times):
         if app.config["GUILD_CREATION_REQ"]==-1:
             return self.admin_level >=3
 
-        elif app.config["GUILD_CREATION_REQ"]]==0:
+        elif app.config["GUILD_CREATION_REQ"]==0:
             return self.can_join_gms
             
         return (self.has_premium or self.admin_level>=3 or self.true_score >= 250 or (self.created_utc <= 1592974538 and self.true_score >= 50)) and self.can_join_gms
@@ -1082,8 +1098,19 @@ class User(Base, Stndrd, Age_times):
             data['real_id']=self.real_id
 
         return data
-    
 
+    @property
+    def json_login(self):
+        data = self.json_raw
+
+        data["badges"]=[x.json_core for x in self.badges]
+        data['post_rep']= int(self.karma)
+        data['comment_rep']= int(self.comment_karma)
+        data['post_count']=self.post_count
+        data['comment_count']=self.comment_count
+
+        return data
+    
     @property
     def json_core(self):
 

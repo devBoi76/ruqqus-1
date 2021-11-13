@@ -23,24 +23,6 @@ valid_username_regex = re.compile("^[a-zA-Z0-9_]{3,25}$")
 valid_password_regex = re.compile("^.{8,100}$")
 # valid_email_regex=re.compile("(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
 
-# login form
-
-
-@app.route("/login", methods=["GET"])
-@no_cors
-@auth_desired
-def login_get(v):
-
-    redir = request.args.get("redirect", "/")
-    if v:
-        return redirect(redir)
-
-    return render_template("login.html",
-                           failed=False,
-                           i=random_image(),
-                           redirect=redir)
-
-
 def check_for_alts(current_id):
     # account history
     past_accs = set(session.get("history", []))
@@ -71,8 +53,8 @@ def check_for_alts(current_id):
 # login post procedure
 
 
-@no_cors
-@app.route("/login", methods=["POST"])
+#@no_cors
+@app.route("/api/v2/login", methods=["POST"])
 @limiter.limit("6/minute")
 def login_post():
 
@@ -85,21 +67,15 @@ def login_post():
     else:
         account = get_user(username, graceful=True)
 
-    if not account:
+    if not account or account.is_deleted:
         time.sleep(random.uniform(0, 2))
-        return render_template("login.html", failed=True, i=random_image())
-
-    if account.is_deleted:
-        time.sleep(random.uniform(0, 2))
-        return render_template("login.html", failed=True, i=random_image())
-
-    # test password
+        return {"error": "Invalid username, email or password"}, 403
 
     if request.form.get("password"):
 
         if not account.verifyPass(request.form.get("password")):
             time.sleep(random.uniform(0, 2))
-            return render_template("login.html", failed=True, i=random_image())
+            return {"error": "Invalid username, email or password"}, 403
 
         if account.mfa_secret:
             now = int(time.time())
@@ -144,24 +120,14 @@ def login_post():
     else:
         abort(400)
 
-    # set session and user id
-    session["user_id"] = account.id
-    session["session_id"] = token_hex(16)
-    session["login_nonce"] = account.login_nonce
-    session.permanent = True
-
-    check_for_alts(account.id)
+    #check_for_alts(account.id)
 
     account.refresh_selfset_badges()
 
-    # check for previous page
-
-    redir = request.form.get("redirect", "/")
-    if redir:
-        return redirect(redir)
-    else:
-        return redirect(account.url)
-
+    return {
+        "v": account.json_login,
+        "token": account.token
+    }
 
 @app.route("/me", methods=["GET"])
 @auth_required
@@ -181,80 +147,20 @@ def logout(v):
 
     return redirect("/")
 
-# signing up
 
+@app.route("/api/v2/signup", methods=["POST"])
+#@no_cors
+#@auth_desired
+def sign_up_post():
+    print("post signup")
 
-@app.route("/signup", methods=["GET"])
-@no_cors
-@auth_desired
-def sign_up_get(v):
-    if v:
-        return redirect("/")
-
-    agent = request.headers.get("User-Agent", None)
-    if not agent:
-        abort(403)
-
-    # check for referral in link
-    ref_id = None
-    ref = request.args.get("ref", None)
-    if ref:
-        ref_user = g.db.query(User).filter(User.username.ilike(ref)).first()
-
-    else:
-        ref_user = None
-
-    if ref_user and (ref_user.id in session.get("history", [])):
-        return render_template("sign_up_failed_ref.html",
-                               i=random_image())
-
-    # check tor
-    # if request.headers.get("CF-IPCountry")=="T1":
-    #    return render_template("sign_up_tor.html",
-    #        i=random_image(),
-    #        ref_user=ref_user)
-
-    # Make a unique form key valid for one account creation
-    now = int(time.time())
-    token = token_hex(16)
-    session["signup_token"] = token
-    ip = request.remote_addr
-
-    formkey_hashstr = str(now) + token + agent
-
-    # formkey is a hash of session token, timestamp, and IP address
-    formkey = hmac.new(key=bytes(environ.get("MASTER_KEY"), "utf-16"),
-                       msg=bytes(formkey_hashstr, "utf-16"),
-                       digestmod='md5'
-                       ).hexdigest()
-
-    redir = request.args.get("redirect", None)
-
-    error = request.args.get("error", None)
-
-    return render_template("sign_up.html",
-                           formkey=formkey,
-                           now=now,
-                           i=random_image(),
-                           redirect=redir,
-                           ref_user=ref_user,
-                           error=error,
-                           hcaptcha=app.config["HCAPTCHA_SITEKEY"]
-                           )
-
-# signup api
-
-
-@app.route("/signup", methods=["POST"])
-@no_cors
-@auth_desired
-def sign_up_post(v):
-
-    if v:
-        abort(403)
+    #if v:
+    #    print("v - abort")
+    #    abort(403)
 
     agent = request.headers.get("User-Agent", None)
     if not agent:
+        print("no user agent - abort")
         abort(403)
 
     # check tor
@@ -263,20 +169,20 @@ def sign_up_post(v):
     #        i=random_image()
     #    )
 
-    form_timestamp = request.form.get("now", '0')
-    form_formkey = request.form.get("formkey", "none")
+    #form_timestamp = request.form.get("now", '0')
+    #form_formkey = request.form.get("formkey", "none")
 
-    submitted_token = session.get("signup_token", "")
-    if not submitted_token:
-        abort(400)
+    #submitted_token = session.get("signup_token", "")
+    #if not submitted_token:
+    #    abort(400)
 
-    correct_formkey_hashstr = form_timestamp + submitted_token + agent
+    #correct_formkey_hashstr = form_timestamp + submitted_token + agent
 
-    correct_formkey = hmac.new(key=bytes(environ.get("MASTER_KEY"), "utf-16"),
-                               msg=bytes(correct_formkey_hashstr, "utf-16")
-                               ).hexdigest()
+    #correct_formkey = hmac.new(key=bytes(environ.get("MASTER_KEY"), "utf-16"),
+                              # msg=bytes(correct_formkey_hashstr, "utf-16")
+                              # ).hexdigest()
 
-    now = int(time.time())
+    #now = int(time.time())
 
     username = request.form.get("username")
 
@@ -296,27 +202,27 @@ def sign_up_post(v):
     if app.config["DISABLE_SIGNUPS"]:
         return new_signup("New account registration is currently closed. Please come back later.")
 
-    if now - int(form_timestamp) < 5:
+    #if now - int(form_timestamp) < 5:
         #print(f"signup fail - {username } - too fast")
-        return new_signup("There was a problem. Please try again.")
+    #    return new_signup("There was a problem. Please try again.")
 
-    if not hmac.compare_digest(correct_formkey, form_formkey):
+    #if not hmac.compare_digest(correct_formkey, form_formkey):
         #print(f"signup fail - {username } - mismatched formkeys")
-        return new_signup("There was a problem. Please try again.")
+    #    return new_signup("There was a problem. Please try again.")
 
     # check for matched passwords
-    if not request.form.get(
-            "password") == request.form.get("password_confirm"):
-        return new_signup("Passwords did not match. Please try again.")
+    #if not request.form.get(
+    #        "password") == request.form.get("password_confirm"):
+    #    return new_signup("Passwords did not match. Please try again.")
 
     # check username/pass conditions
     if not re.fullmatch(valid_username_regex, username):
         #print(f"signup fail - {username } - mismatched passwords")
-        return new_signup("Invalid username")
+        return {"error", "Invalid username"}, 400
 
     if not re.fullmatch(valid_password_regex, request.form.get("password")):
         #print(f"signup fail - {username } - invalid password")
-        return new_signup("Password must be between 8 and 100 characters.")
+        return {"error": "Password must be between 8 and 100 characters."}, 400
 
     # if not re.match(valid_email_regex, request.form.get("email")):
     #    return new_signup("That's not a valid email.")
@@ -337,22 +243,21 @@ def sign_up_post(v):
 
     existing_account = get_user(request.form.get("username"), graceful=True)
     if existing_account and existing_account.reserved:
-        return redirect(existing_account.permalink)
+        return {"error": "That username is reserved"}, 403
 
     if existing_account or (email and g.db.query(
             User).filter(User.email.ilike(email)).first()):
         # #print(f"signup fail - {username } - email already exists")
-        return new_signup(
-            "An account with that username or email already exists.")
+        return {"error":  "An account with that username or email already exists."}, 400
 
 
     # ip ratelimit
-    previous = g.db.query(User).filter_by(
-        creation_ip=request.remote_addr).filter(
-        User.created_utc > int(
-            time.time()) - 60 * 60).first()
-    if previous:
-        abort(429)
+    #previous = g.db.query(User).filter_by(
+    #    creation_ip=request.remote_addr).filter(
+    #    User.created_utc > int(
+    #        time.time()) - 60 * 60).first()
+    #if previous:
+    #    abort(429)
 
     # check bot
     if app.config.get("HCAPTCHA_SITEKEY"):
@@ -372,7 +277,7 @@ def sign_up_post(v):
             return new_signup("Unable to verify captcha [2].")
 
     # kill tokens
-    session.pop("signup_token")
+    #session.pop("signup_token")
 
     # get referral
     ref_id = int(request.form.get("referred_by", 0))
@@ -402,14 +307,14 @@ def sign_up_post(v):
 
     except Exception as e:
         #print(e)
-        return new_signup("Please enter a valid email")
+        return {"error": "Please enter a valid email"}, 400
 
     g.db.add(new_user)
     g.db.commit()
 
     # check alts
 
-    check_for_alts(new_user.id)
+    #check_for_alts(new_user.id)
 
     # send welcome/verify email
     if email:
@@ -428,14 +333,10 @@ And since we're committed to [open-source](https://github.com/ruqqus/ruqqus) tra
 \n\n-The Ruqqus Team"""
     send_notification(new_user, text)
 
-    session["user_id"] = new_user.id
-    session["session_id"] = token_hex(16)
-
-    redir = request.form.get("redirect", None)
-
-    # #print(f"Signup event: @{new_user.username}")
-
-    return redirect("/")
+    return {
+        "v": new_user.json_login,
+        "token": new_user.token
+    }
 
 
 @app.route("/forgot", methods=["GET"])

@@ -11,6 +11,7 @@ import os
 from os import environ
 import secrets
 from flask import *
+from flask_cors import CORS
 from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -191,6 +192,10 @@ app.config["MAX_GUILD_COUNT"]=int(environ.get("MAX_GUILD_COUNT", "10").lstrip().
 Markdown(app)
 cache = Cache(app)
 Compress(app)
+
+CORS(app, resources = {
+    r'/api/v2/*': {'origins': '*'}
+})
 
 class CorsMatch(str):
 

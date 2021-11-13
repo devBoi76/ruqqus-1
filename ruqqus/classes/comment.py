@@ -77,7 +77,9 @@ class Comment(Base, Age_times, Scores, Stndrd, Fuzzing):
         "User",
         lazy="joined",
         innerjoin=True,
-        primaryjoin="User.id==Comment.author_id")
+        primaryjoin="User.id==Comment.author_id",
+        back_populates="comments"
+    )
     board = association_proxy("post", "board")
     original_board = relationship(
         "Board", primaryjoin="Board.id==Comment.original_board_id")
@@ -85,8 +87,8 @@ class Comment(Base, Age_times, Scores, Stndrd, Fuzzing):
     upvotes = Column(Integer, default=1)
     downvotes = Column(Integer, default=0)
 
-    parent_comment = relationship("Comment", remote_side=[id])
-    child_comments = relationship("Comment", remote_side=[parent_comment_id])
+    parent_comment = relationship("Comment", remote_side=[id], backref="child_comments")
+    #child_comments = relationship("Comment", remote_side=[parent_comment_id])
 
     awards = relationship("AwardRelationship", lazy="joined")
 
@@ -501,7 +503,7 @@ class Notification(Base):
 
     comment = relationship("Comment", primaryjoin="Notification.comment_id==Comment.id")
     post = relationship("Submission")
-    user=relationship("User", innerjoin=True)
+    user=relationship("User", innerjoin=True, back_populates="notifications")
 
     def __repr__(self):
 

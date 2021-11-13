@@ -64,7 +64,8 @@ class Submission(Base, Stndrd, Age_times, Scores, Fuzzing):
         "Comment",
         lazy="dynamic",
         primaryjoin="Comment.parent_submission==Submission.id",
-        backref="submissions")
+        back_populates="post"
+    )
     domain_ref = Column(Integer, ForeignKey("domains.id"))
     domain_obj = relationship("Domain")
     flags = relationship("Flag", backref="submission")

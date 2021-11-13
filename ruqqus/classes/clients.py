@@ -21,7 +21,7 @@ class OauthApp(Base, Stndrd):
     is_banned = Column(Boolean, default=False)
     description = Column(String(256), default=None)
 
-    author = relationship("User")
+    author = relationship("User", back_populates="_applications")
 
     def __repr__(self):
         return f"<OauthApp(id={self.id})>"
@@ -73,7 +73,7 @@ class ClientAuth(Base, Stndrd):
     refresh_token = Column(String(128))
     access_token_expire_utc = Column(Integer)
 
-    user = relationship("User", lazy="joined")
+    user = relationship("User", lazy="joined", back_populates="authorizations")
     application = relationship("OauthApp", lazy="joined")
 
     @property

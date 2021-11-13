@@ -16,58 +16,26 @@ def get_logged_in_user(db=None):
     if not db:
         db=g.db
 
-    if request.path.startswith("/api/v1"):
+    if "Authorization" in request.headers:
 
-        token = request.headers.get("Authorization")
-        if not token:
+        token = request.headers.get("Authorization").split()[1]
 
-            #let admins hit api/v1 from browser
-            # x=request.session.get('user_id')
-            # nonce=request.session.get('login_nonce')
-            # if not x or not nonce:
-            #     return None, None
-            # user=g.db.query(User).filter_by(id=x).first()
-            # if not user:
-            #     return None, None
-            # if user.admin_level >=3 and nonce>=user.login_nonce:
-            #     return user, None
-            return None, None
+        try:
+            data = jwt.decode(token, app.config.get("SECRET_KEY"), algorithms = ["HS256"])
+            uid = data.get("id")
+            login_nonce = data.get("login_nonce")
 
-        token = token.split()
-        if len(token) < 2:
-            return None, None
-
-        token = token[1]
-        if not token:
-            return None, None
-
-        client = db.query(ClientAuth).filter(
-            ClientAuth.access_token == token,
-            ClientAuth.access_token_expire_utc > int(time.time())
-        ).first()
-
-        x = (client.user, client) if client else (None, None)
-
-
-    elif "user_id" in session:
-
-        uid = session.get("user_id")
-        nonce = session.get("login_nonce", 0)
-        if not uid:
-            x= (None, None)
-        v = db.query(User).options(
-            joinedload(User.moderates).joinedload(ModRelationship.board), #joinedload(Board.reports),
-            joinedload(User.subscriptions).joinedload(Subscription.board)
-        #    joinedload(User.notifications)
-            ).filter_by(
-            id=uid,
-            is_deleted=False
+            v = db.query(User).filter_by(
+                id=uid,
+                is_deleted=False
             ).first()
 
-        if v and (nonce < v.login_nonce):
-            x= (None, None)
-        else:
-            x=(v, None)
+            if v and (nonce < v.login_nonce):
+                x= (None, None)
+            else:
+                x=(v, None)
+        except:
+            x = (None, None)
 
     else:
         x=(None, None)

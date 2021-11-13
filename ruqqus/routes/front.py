@@ -273,11 +273,8 @@ def frontlist(v=None, sort=None, page=1, nsfw=False, nsfl=False,
     return [x.id for x in posts.offset(25 * (page - 1)).limit(26).all()]
     
 
-@app.route("/", methods=["GET"])
-@app.route("/api/v1/front/listing", methods=["GET"])
-@app.route("/api/v2/me/submissions")
+@app.get("/api/v2/feed")
 @auth_desired
-@api("read")
 def home(v):
     """
 Get personalized home page based on subscriptions and personal settings.
@@ -380,7 +377,7 @@ def categories_select(v):
 @app.route("/inpage/all")
 @app.get("/api/v2/submissions")
 @auth_desired
-@api("read")
+#@api("read")
 def front_all(v):
     """
 Get all posts, minus filtered content based on personal settings.
@@ -408,6 +405,7 @@ Optional query parameters:
     ignore_pinned = bool(request.args.get("ignore_pinned", False))
 
 
+    """
     cats=session.get("catids")
     new_cats=request.args.get('cats','')
     if not cats and not new_cats and not request.path.startswith('/api/'):
@@ -418,7 +416,6 @@ Optional query parameters:
                 categories=CATEGORIES
                 )
             )
-
 
     if new_cats:
         #print('overwrite cats')
@@ -434,8 +431,9 @@ Optional query parameters:
         session.modified=True
 
     #print(cats)
+    """
 
-    ids = frontlist(sort=sort,
+    posts = frontlist(sort=sort,
                     page=page,
                     nsfw=(v and v.over_18 and not v.filter_nsfw),
                     nsfl=(v and v.show_nsfl),
@@ -446,40 +444,26 @@ Optional query parameters:
                     gt=int(request.args.get("utc_greater_than", 0)),
                     lt=int(request.args.get("utc_less_than", 0)),
                     filter_words=v.filter_words if v else [],
-                    categories=[] if request.path.startswith("/api/") else cats
+                    categories=[]
                     )
 
     # check existence of next page
-    next_exists = (len(ids) == 26)
-    ids = ids[0:25]
+    next_exists = (len(posts) == 26)
+    posts = posts[0:25]
 
    # If page 1, check for sticky
     if page == 1 and not ignore_pinned:
-        sticky = []
-        sticky = g.db.query(Submission.id).filter_by(stickied=True).first()
-        if sticky:
-            ids = [sticky.id] + ids
-    # check if ids exist
-    posts = get_posts(ids, sort=sort, v=v)
+        stickies = g.db.query(Submission).filter_by(stickied=True).limit(3).all()
+        posts = [*stickies, *posts]
 
-    return {'html': lambda: render_template("home.html",
-                                            v=v,
-                                            listing=posts,
-                                            next_exists=next_exists,
-                                            sort_method=sort,
-                                            time_filter=t,
-                                            page=page,
-                                            CATEGORIES=CATEGORIES
-                                            ),
-            'inpage': lambda: render_template("submission_listing.html",
-                                              v=v,
-                                              listing=posts
-                                              ),
-            'api': lambda: jsonify({"data": [x.json for x in posts],
-                                    "next_exists": next_exists
-                                    }
-                                   )
-            }
+    # check if ids exist
+    #posts = get_posts(ids, sort=sort, v=v)
+
+    return jsonify({
+        "data": [x.json for x in posts],
+        "next_exists": next_exists
+    })
+
 
 @app.route("/subcat/<name>", methods=["GET"])
 @auth_desired

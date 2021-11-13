@@ -26,8 +26,8 @@ class ModRelationship(Base, Age_times):
     #permTitles = Column(Boolean, default=False)
     #permLodges = Column(Boolean, default=False)
 
-    user = relationship("User", lazy="joined")
-    board = relationship("Board", lazy="joined")
+    user = relationship("User", lazy="joined", back_populates="moderates")
+    board = relationship("Board", lazy="joined", back_populates="moderators")
 
     def __init__(self, *args, **kwargs):
         if "created_utc" not in kwargs:
@@ -106,12 +106,14 @@ class BanRelationship(Base, Stndrd, Age_times):
     user = relationship(
         "User",
         lazy="joined",
-        primaryjoin="User.id==BanRelationship.user_id")
+        primaryjoin="User.id==BanRelationship.user_id",
+        back_populates="banned_from"
+    )
     banning_mod = relationship(
         "User",
         lazy="joined",
         primaryjoin="User.id==BanRelationship.banning_mod_id")
-    board = relationship("Board")
+    board = relationship("Board", back_populates="bans")
 
     def __init__(self, *args, **kwargs):
         if "created_utc" not in kwargs:
@@ -158,8 +160,9 @@ class ChatBan(Base, Stndrd, Age_times):
     banning_mod = relationship(
         "User",
         lazy="joined",
-        primaryjoin="User.id==ChatBan.banning_mod_id")
-    board = relationship("Board")
+        primaryjoin="User.id==ChatBan.banning_mod_id"
+    )
+    board = relationship("Board", back_populates="chatbans")
 
     def __init__(self, *args, **kwargs):
         if "created_utc" not in kwargs:
@@ -202,12 +205,14 @@ class ContributorRelationship(Base, Stndrd, Age_times):
     user = relationship(
         "User",
         lazy="joined",
-        primaryjoin="User.id==ContributorRelationship.user_id")
+        primaryjoin="User.id==ContributorRelationship.user_id",
+        back_populates="contributes"
+    )
     approving_mod = relationship(
         "User",
         lazy='joined',
         primaryjoin="User.id==ContributorRelationship.approving_mod_id")
-    board = relationship("Board", lazy="subquery")
+    board = relationship("Board", lazy="subquery", back_populates="contributors")
 
     def __init__(self, *args, **kwargs):
         if "created_utc" not in kwargs:
@@ -227,7 +232,7 @@ class PostRelationship(Base):
     board_id = Column(Integer, ForeignKey("boards.id"))
 
     post = relationship("Submission", lazy="subquery")
-    board = relationship("Board", lazy="subquery")
+    board = relationship("Board", lazy="subquery", back_populates="postrels")
 
     def __repr__(self):
         return f"<PostRel(id={self.id}, pid={self.post_id}, board_id={self.board_id})>"
@@ -259,7 +264,7 @@ class BoardBlock(Base, Stndrd, Age_times):
     board_id = Column(Integer, ForeignKey("boards.id"))
     created_utc = Column(Integer)
 
-    user = relationship("User")
+    user = relationship("User", back_populates="board_blocks")
     board = relationship("Board")
 
     def __repr__(self):

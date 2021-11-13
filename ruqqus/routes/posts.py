@@ -336,19 +336,21 @@ def submit_post(v):
     """
 Create a post
 
-Required form data:
+Required JSON data:
 * `title` - The post title
 * `guild` - The name of the guild to submit to
 
-At least one of the following form items is required:
+At least one of the following items is required:
 * `url` - The link being submitted. Uploading an image file counts as a url.
 * `body` - The text body of the post
 
 Optional file data:
 * `file` - An image to upload as the post target. Requires premium or 500 Rep.
 """
+    
+    data = request.get_json()
 
-    title = request.form.get("title", "").lstrip().rstrip()
+    title = data.get("title", "").lstrip().rstrip()
 
     title = title.lstrip().rstrip()
     title = title.replace("\n", "")
@@ -358,63 +360,22 @@ Optional file data:
     # sanitize title
     title = bleach.clean(title)
 
-    url = request.form.get("url", "")
+    url = data.get("url", "")
 
-    board = get_guild(request.form.get('board', request.form.get("guild")), graceful=True)
+    board = get_guild(data.get('board', data.get("guild")), graceful=True)
     if not board:
         board = get_guild('general')
 
     if not title:
-        return {"html": lambda: (render_template("submit.html",
-                                                 v=v,
-                                                 error="Please enter a better title.",
-                                                 title=title,
-                                                 url=url,
-                                                 body=request.form.get(
-                                                     "body", ""),
-                                                 b=board
-                                                 ), 400),
-                "api": lambda: ({"error": "Please enter a better title"}, 400)
-                }
+        return {"error": "A title is required"}, 400
 
-    # if len(title)<10:
-    #     return render_template("submit.html",
-    #                            v=v,
-    #                            error="Please enter a better title.",
-    #                            title=title,
-    #                            url=url,
-    #                            body=request.form.get("body",""),
-    #                            b=board
-    #                            )
-
-
-    elif len(title) > 250:
-        return {"html": lambda: (render_template("submit.html",
-                                                 v=v,
-                                                 error="250 character limit for titles.",
-                                                 title=title[0:250],
-                                                 url=url,
-                                                 body=request.form.get(
-                                                     "body", ""),
-                                                 b=board
-                                                 ), 400),
-                "api": lambda: ({"error": "250 character limit for titles"}, 400)
-                }
+    elif len(title) > 50:
+        return {"error": "50 character limit for titles"}, 400
 
     parsed_url = urlparse(url)
-    if not (parsed_url.scheme and parsed_url.netloc) and not request.form.get(
+    if not (parsed_url.scheme and parsed_url.netloc) and not data.get(
             "body") and not request.files.get("file", None):
-        return {"html": lambda: (render_template("submit.html",
-                                                 v=v,
-                                                 error="Please enter a url or some text.",
-                                                 title=title,
-                                                 url=url,
-                                                 body=request.form.get(
-                                                     "body", ""),
-                                                 b=board
-                                                 ), 400),
-                "api": lambda: ({"error": "`url` or `body` parameter required."}, 400)
-                }
+        return {"error": "`url` or `body` parameter required."}, 400
 
     # sanitize title
     title = bleach.clean(title, tags=[])
@@ -494,66 +455,30 @@ Optional file data:
         embed = ""
 
     # board
-    board_name = request.form.get("board", "general")
+    board_name = data.get("board", "general")
     board_name = board_name.lstrip("+")
     board_name = board_name.rstrip()
 
     board = get_guild(board_name, graceful=True)
 
     if not board:
-
-        return {"html": lambda: (render_template("submit.html",
-                                                 v=v,
-                                                 error=f"Please enter a Guild to submit to.",
-                                                 title=title,
-                                                 url=url, body=request.form.get(
-                                                     "body", ""),
-                                                 b=None
-                                                 ), 403),
-                "api": lambda: (jsonify({"error": f"403 Forbidden - +{board.name} has been banned."}))
-                }
+        try:
+            board = g.db.query(Board).filter_by(id=1).one()
+        except:
+            return {"error": "No default board"}, 404
 
     if board.is_banned:
-
-        return {"html": lambda: (render_template("submit.html",
-                                                 v=v,
-                                                 error=f"+{board.name} has been banned.",
-                                                 title=title,
-                                                 url=url, body=request.form.get(
-                                                     "body", ""),
-                                                 b=None
-                                                 ), 403),
-                "api": lambda: (jsonify({"error": f"403 Forbidden - +{board.name} has been banned."}))
-                }
+        return {"error": f"+{board.name} has been banned"}, 403
 
     if board.has_ban(v):
-        return {"html": lambda: (render_template("submit.html",
-                                                 v=v,
-                                                 error=f"You are exiled from +{board.name}.",
-                                                 title=title,
-                                                 url=url, body=request.form.get(
-                                                     "body", ""),
-                                                 b=None
-                                                 ), 403),
-                "api": lambda: (jsonify({"error": f"403 Not Authorized - You are exiled from +{board.name}"}), 403)
-                }
+        return {"error": f"You are exiled from +{board.name}"}, 403
 
     if (board.restricted_posting or board.is_private) and not (
             board.can_submit(v)):
-        return {"html": lambda: (render_template("submit.html",
-                                                 v=v,
-                                                 error=f"You are not an approved contributor for +{board.name}.",
-                                                 title=title,
-                                                 url=url,
-                                                 body=request.form.get(
-                                                     "body", ""),
-                                                 b=None
-                                                 ), 403),
-                "api": lambda: (jsonify({"error": f"403 Not Authorized - You are not an approved contributor for +{board.name}"}), 403)
-                }
+        return {"error": f"You must be approved to post in +{board.name}"}, 403
 
     if board.disallowbots and request.headers.get("X-User-Type")=="Bot":
-        return {"api": lambda: (jsonify({"error": f"403 Not Authorized - +{board.name} disallows bots from posting and commenting!"}), 403)}
+        return {"error": f"Bots are not allowed in +{board.name}"}, 403
 
     # similarity check
     now = int(time.time())
@@ -607,7 +532,7 @@ Optional file data:
 
     if max(len(similar_urls), len(similar_posts)) >= threshold:
 
-        text = "Your Ruqqus account has been suspended for 1 day for the following reason:\n\n> Too much spam!"
+        text = "Your account has been banned for a day for the following reason:\n\n> Too much spam!"
         send_notification(v, text)
 
         v.ban(reason="Spamming.",
@@ -631,36 +556,13 @@ Optional file data:
                     )
             g.db.add(ma)
         g.db.commit()
-        return redirect("/notifications")
 
     # catch too-long body
     if len(str(body)) > 10000:
-
-        return {"html": lambda: (render_template("submit.html",
-                                                 v=v,
-                                                 error="10000 character limit for text body.",
-                                                 title=title,
-                                                 url=url,
-                                                 body=request.form.get(
-                                                     "body", ""),
-                                                 b=board
-                                                 ), 400),
-                "api": lambda: ({"error": "10000 character limit for text body."}, 400)
-                }
+        return {"error": "10000 character limit for text body."}, 400
 
     if len(url) > 2048:
-
-        return {"html": lambda: (render_template("submit.html",
-                                                 v=v,
-                                                 error="2048 character limit for URLs.",
-                                                 title=title,
-                                                 url=url,
-                                                 body=request.form.get(
-                                                     "body", ""),
-                                                 b=board
-                                                 ), 400),
-                "api": lambda: ({"error": "2048 character limit for URLs."}, 400)
-                }
+        return {"error": "2048 character limit for URLs."}, 400
 
     # render text
 
@@ -683,17 +585,7 @@ Optional file data:
             v.ban(days=30, reason="Digitally malicious content is not allowed.")
             abort(403)
             
-        return {"html": lambda: (render_template("submit.html",
-                                                 v=v,
-                                                 error=reason,
-                                                 title=title,
-                                                 url=url,
-                                                 body=request.form.get(
-                                                     "body", ""),
-                                                 b=board
-                                                 ), 403),
-                "api": lambda: ({"error": reason}, 403)
-                }
+        return {"error": reason}, 403
 
     # check spam
     soup = BeautifulSoup(body_html, features="html.parser")
@@ -717,24 +609,12 @@ Optional file data:
                 BadLink.link)).first()
         if badlink:
             if badlink.autoban:
-                text = "Your Ruqqus account has been suspended for 1 day for the following reason:\n\n> Too much spam!"
+                text = "Your account has been banned for a day for the following reason:\n\n> Too much spam!"
                 send_notification(v, text)
                 v.ban(days=1, reason="spam")
-
-                return redirect('/notifications')
+                post.is_banned = True
             else:
-
-                return {"html": lambda: (render_template("submit.html",
-                                                         v=v,
-                                                         error=f"The link `{badlink.link}` is not allowed. Reason: {badlink.reason}.",
-                                                         title=title,
-                                                         url=url,
-                                                         body=request.form.get(
-                                                             "body", ""),
-                                                         b=board
-                                                         ), 400),
-                        "api": lambda: ({"error": f"The link `{badlink.link}` is not allowed. Reason: {badlink.reason}"}, 400)
-                        }
+                return {"error": f"The link `{badlink.link}` is not allowed ({badlink.reason})"}, 403
 
     # check for embeddable video
     domain = parsed_url.netloc
@@ -752,9 +632,7 @@ Optional file data:
         repost = None
 
     if repost and request.values.get("no_repost"):
-        return {'html':lambda:redirect(repost.permalink),
-		'api': lambda:({"error":"This content has already been posted", "repost":repost.json}, 409)
-	       }
+        return {"error":"This content has already been posted", "repost":repost.json}, 409
 
     if request.files.get('file') and not v.can_submit_image:
         abort(403)
@@ -818,16 +696,7 @@ Optional file data:
 
         file = request.files['file']
         if not file.content_type.startswith('image/'):
-            return {"html": lambda: (render_template("submit.html",
-                                                         v=v,
-                                                         error=f"Image files only.",
-                                                         title=title,
-                                                         body=request.form.get(
-                                                             "body", ""),
-                                                         b=board
-                                                         ), 400),
-                        "api": lambda: ({"error": f"Image files only"}, 400)
-                        }
+            return {"error": f"Image files only"}
 
         name = f'post/{new_post.base36id}/{secrets.token_urlsafe(8)}'
         upload_file(name, file)
@@ -975,9 +844,8 @@ Optional file data:
     g.db.commit()
 
 
-    return {"html": lambda: redirect(new_post.permalink),
-            "api": lambda: jsonify(new_post.json)
-            }
+    return jsonify(new_post.json)
+
 
 # @app.route("/api/nsfw/<pid>/<x>", methods=["POST"])
 # @auth_required
