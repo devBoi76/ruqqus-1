@@ -33,7 +33,6 @@ def error_401(e):
 @app.errorhandler(PaymentRequired)
 @error_wrapper
 @auth_desired
-@api()
 def error_402(e, v):
     return {"error": "402 Payment Required"}, 402
 
@@ -41,7 +40,6 @@ def error_402(e, v):
 @app.errorhandler(403)
 @error_wrapper
 @auth_desired
-@api()
 def error_403(e, v):
 
     return {"error": "403 Forbidden"}, 403
@@ -50,7 +48,6 @@ def error_403(e, v):
 @app.errorhandler(404)
 @error_wrapper
 @auth_desired
-@api()
 def error_404(e, v):
 
     return {"error": "404 Not Found"}, 404
@@ -59,7 +56,6 @@ def error_404(e, v):
 @app.errorhandler(405)
 @error_wrapper
 @auth_desired
-@api()
 def error_405(e, v):
 
     return {"error": "405 Method Not Allowed"}, 405
@@ -68,7 +64,6 @@ def error_405(e, v):
 @app.errorhandler(409)
 @error_wrapper
 @auth_desired
-@api()
 def error_409(e, v):
 
     return {"error": "409 Conflict"}, 409
@@ -77,7 +72,6 @@ def error_409(e, v):
 @app.errorhandler(413)
 @error_wrapper
 @auth_desired
-@api()
 def error_413(e, v):
 
     return {"error": "413 Request Payload Too Large"}, 413
@@ -86,7 +80,6 @@ def error_413(e, v):
 @app.errorhandler(422)
 @error_wrapper
 @auth_desired
-@api()
 def error_422(e, v):
 
     return {"error": "422 Unprocessable Entity"}, 422
@@ -95,7 +88,6 @@ def error_422(e, v):
 @app.errorhandler(429)
 @error_wrapper
 @auth_desired
-@api()
 def error_429(e, v):
 
     ip=request.remote_addr
@@ -132,7 +124,6 @@ def error_429(e, v):
 @app.errorhandler(451)
 @error_wrapper
 @auth_desired
-@api()
 def error_451(e, v):
 
     return {"error": "451 Unavailable For Legal Reasons"}
@@ -141,7 +132,6 @@ def error_451(e, v):
 @app.errorhandler(500)
 @error_wrapper
 @auth_desired
-@api()
 def error_500(e, v):
     try:
         g.db.rollback()
@@ -153,7 +143,6 @@ def error_500(e, v):
 
 @app.errorhandler(503)
 @error_wrapper
-@api()
 def error_503(e):
     try:
         g.db.rollback()
@@ -166,6 +155,5 @@ def error_503(e):
 @app.errorhandler(DatabaseOverload)
 @error_wrapper
 @auth_desired
-@api()
 def error_db_overload(e, v):
     return {"error": "500 Internal Server Error (database overload)"}, 500

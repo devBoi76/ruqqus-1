@@ -5,6 +5,7 @@ import pprint
 import sass
 import mistletoe
 from flask import *
+from os import environ
 
 from ruqqus.helpers.wrappers import *
 from ruqqus.helpers.markdown import *
@@ -14,6 +15,59 @@ from ruqqus.mail import *
 from ruqqus.__main__ import app, limiter
 
 # take care of misc pages that never really change (much)
+
+def full_url(link) -> str:
+
+	return f"{'https' if app.config.get('FORCE_HTTPS', False) else 'http'}://{environ.get('DOMAIN', 'ruqqus.localhost:8000')}{link}"
+
+
+def disable_signups() -> bool:
+
+	try:
+		with open('./disablesignups', 'r') as f:
+			return f.read() == "yes"
+	except:
+		return False
+
+
+@app.get("/api/v2/site")
+@auth_desired
+def get_site(v):
+
+	data = {
+		"name": environ.get("SITE_NAME"),
+		"tagline": environ.get("TAGLINE", ""),
+		"description": environ.get("DESCRIPTION", ""),
+		"icon": environ.get("ICON_URL", full_url('/assets/favicon.ico')),
+		"cover": environ.get("COVER_URL", ""),
+		"meta": {
+			"title": f'{environ.get("SITE_NAME")}{" - "+environ.get("TAGLINE", "") if bool(environ.get("TAGLINE")) else ""}',
+			"description": environ.get("META_DESCRIPTION", "")
+		},
+		"isNSFW": bool(int(environ.get("NSFW", False))),
+		"canDownvote": bool(int(environ.get("ENABLE_DOWNVOTES", True))),
+		"isPrivate": bool(int(environ.get("PRIVATE", False))),
+		"canSignup": not disable_signups(),
+		"hasRestrictedPosting": bool(int(environ.get("RESTRICT_POSTING", False))),
+		"hasRestrictedCommenting": bool(int(environ.get("RESTRICT_COMMENTING", False))),
+		"hasGuilds": bool(int(environ.get("ENABLE_GUILDS", False))),
+		"primaryColor": environ.get("SITE_COLOR", "ff0000"),
+		"integrations": {
+			"hasUnsplash": bool(environ.get("UNSPLASH_KEY", False)),
+			"hasGumroad": bool(environ.get("GUMROAD_KEY", False)),
+			"hasDiscord": bool(environ.get("DISCORD_AUTH", False)),
+			"hasKofi": bool(environ.get("KOFI_WEBHOOK_TOKEN", False)),
+			"hasMailgun": bool(environ.get("MAILGUN_KEY", False)),
+			"hasPaypal": bool(environ.get("PAYPAL_CLIENT_ID", False)),
+		},
+		"memberCount": g.db.query(User).count()
+	}
+
+	if v and v.admin_level >= 4:
+		data["hasShadowban"] = bool(environ.get("SHADOWBAN", False))
+
+	return jsonify(data)
+
 
 @app.route("/assets/style/<file>.css", methods=["GET"])
 @cache.memoize()

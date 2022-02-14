@@ -1,4 +1,4 @@
-export PYTHONWARNINGS=error::UserWarning
+#export PYTHONWARNINGS=error::UserWarning
 export READ_ONLY=0
 export admin_email=
 export AWS_ACCESS_KEY_ID=
@@ -44,3 +44,5 @@ export TENOR_KEY=
 export tos_cutoff=0
 export WEB_CONCURRENCY=3
 export WORKER_CONNECTIONS=20
+export SITE_NAME=
+export SITE_COLOR=

@@ -4,6 +4,7 @@ import requests
 from werkzeug.wrappers.response import Response as RespObj
 import time
 import random
+import traceback
 
 from ruqqus.classes import *
 from .get import *
@@ -433,7 +434,7 @@ def api(*scopes, no_ban=False):
                         return jsonify({"error": f"403 Forbidden. The user account is suspended."}), 403
 
                 if not v:
-                    return jsonify({"error": f"401 Not Authorized. You must log in."}), 401
+                    return jsonify({"error": f"401 Not Authorized. You must log in. from api wrapper"}), 401
 
                 if v.is_suspended:
                     return jsonify({"error": f"403 Forbidden. You are banned."}), 403
