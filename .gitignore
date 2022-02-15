@@ -111,4 +111,4 @@ package-lock.json
 *.map
 local.txt
 *.scssc
-.env.sh
+.env.sh.vscode/
