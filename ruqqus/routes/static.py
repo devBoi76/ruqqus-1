@@ -52,6 +52,7 @@ def get_site(v):
 		"hasRestrictedCommenting": bool(int(environ.get("RESTRICT_COMMENTING", False))),
 		"hasGuilds": bool(int(environ.get("ENABLE_GUILDS", False))),
 		"primaryColor": environ.get("SITE_COLOR", "ff0000"),
+		"rgb": "139, 92, 246",
 		"integrations": {
 			"hasUnsplash": bool(environ.get("UNSPLASH_KEY", False)),
 			"hasGumroad": bool(environ.get("GUMROAD_KEY", False)),
