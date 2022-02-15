@@ -270,8 +270,7 @@ def frontlist(v=None, sort=None, page=1, nsfw=False, nsfl=False,
     else:
         abort(400)
 
-    # return [x.id for x in posts.offset(25 * (page - 1)).limit(26).all()]
-    return []
+    return [x.id for x in posts.offset(25 * (page - 1)).limit(26).all()]
     
 
 @app.get("/api/v2/feed")
