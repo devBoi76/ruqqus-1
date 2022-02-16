@@ -5,11 +5,11 @@ COPY supervisord.conf /etc/supervisord.conf
 RUN apt update \
     && apt install -y python3.7 python3-pip supervisor
 
-RUN mkdir -p /opt/ruqqus/service
+RUN mkdir -p ./service
 
-COPY requirements.txt /opt/ruqqus/service/requirements.txt
+COPY requirements.txt ./service/requirements.txt
 
-RUN cd /opt/ruqqus/service \
+RUN cd ./service \
     && pip3 install -r requirements.txt
 
 EXPOSE 80/tcp
