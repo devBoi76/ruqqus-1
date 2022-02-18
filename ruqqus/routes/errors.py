@@ -138,7 +138,7 @@ def error_500(e, v):
     except AttributeError:
         pass
 
-    return {"error": "500 Internal Server Error"}
+    return {"error": "500 Internal Server Error"}, 500
 
 
 @app.errorhandler(503)

@@ -31,14 +31,20 @@ def get_logged_in_user(db=None):
                 is_deleted=False
             ).first()
 
-            if v and (nonce < v.login_nonce):
+            print(f'request from {v.username}')
+
+            if v and (login_nonce < v.login_nonce):
+                print('login nonce invalid')
                 x= (None, None)
             else:
                 x=(v, None)
-        except:
+        except Exception as e:
+            print(e)
+            print('error')
             x = (None, None)
 
     else:
+        print('not logged in')
         x=(None, None)
 
     if x[0]:

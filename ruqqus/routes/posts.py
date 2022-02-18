@@ -68,7 +68,6 @@ def post_redirect(boardname, pid):
 
 @app.get("/api/v2/submissions/<pid>")
 @auth_desired
-@api("read")
 def post_base36id_no_comments(pid,v=None):
     """
 Get a single submission (without comments).
@@ -103,10 +102,7 @@ URL path parameters:
 
 
 
-    return {
-        "html":lambda:post.rendered_page(v=v),
-        "api":lambda:jsonify(post.json)
-        }
+    return post.json
 
 
 @app.route("/+<boardname>/post/<pid>/", methods=["GET"])
@@ -114,7 +110,6 @@ URL path parameters:
 @app.route("/api/v1/post/<pid>", methods=["GET"])
 @app.get("/api/v2/submissions/<pid>/comments")
 @auth_desired
-@api("read")
 def post_base36id_with_comments(pid, boardname=None, anything=None, v=None):
     """
 Get the comment tree for a submission.
@@ -156,10 +151,8 @@ Optional query parameters:
     
     post.tree_comments()
 
-    return {
-        "html":lambda:post.rendered_page(v=v),
-        "api":lambda:jsonify({"data":[x.json for x in post.replies]})
-        }
+    return jsonify({"data":[x.json for x in post.replies]})
+
 
 #if the guild name is missing from the url, add it and redirect
 @app.route("/post/<base36id>", methods=["GET"])
@@ -330,13 +323,11 @@ def get_post_title(v):
 @is_not_banned
 @no_negative_balance('html')
 @tos_agreed
-@validate_formkey
-@api("create")
 def submit_post(v):
     """
 Create a post
 
-Required JSON data:
+Required form data:
 * `title` - The post title
 * `guild` - The name of the guild to submit to
 
@@ -348,7 +339,7 @@ Optional file data:
 * `file` - An image to upload as the post target. Requires premium or 500 Rep.
 """
     
-    data = request.get_json()
+    data = request.form
 
     title = data.get("title", "").lstrip().rstrip()
 
@@ -361,10 +352,6 @@ Optional file data:
     title = bleach.clean(title)
 
     url = data.get("url", "")
-
-    board = get_guild(data.get('board', data.get("guild")), graceful=True)
-    if not board:
-        board = get_guild('general')
 
     if not title:
         return {"error": "A title is required"}, 400
@@ -382,7 +369,7 @@ Optional file data:
 
     # Force https for submitted urls
 
-    if request.form.get("url"):
+    if data.get("url"):
         new_url = ParseResult(scheme="https",
                               netloc=parsed_url.netloc,
                               path=parsed_url.path,
@@ -393,7 +380,45 @@ Optional file data:
     else:
         url = ""
 
+    # board
+    board_name = data.get("board", "general")
+    board_name = board_name.lstrip("+")
+    board_name = board_name.rstrip()
+
+    board = get_guild(board_name, graceful=True)
+
+    if not board:
+        try:
+            board = g.db.query(Board).filter_by(id=1).one()
+        except:
+            board = Board(
+                name="general",
+                description="Default catch-all guild.",
+                description_html="<p>Default catch-all guild.</p>",
+                over_18=False,
+                creator_id=1,
+                subcat_id=1
+            )
+
+            g.db.add(board)
+            g.db.flush()
+
+    if board.is_banned:
+        return {"error": f"+{board.name} has been banned"}, 403
+
+    if board.has_ban(v):
+        return {"error": f"You are exiled from +{board.name}"}, 403
+
+    if (board.restricted_posting or board.is_private) and not (
+            board.can_submit(v)):
+        return {"error": f"You must be approved to post in +{board.name}"}, 403
+
+    if board.disallowbots and request.headers.get("X-User-Type")=="Bot":
+        return {"error": f"Bots are not allowed in +{board.name}"}, 403
+
     body = request.form.get("body", "")
+    if data.get("url", "null") == "null":
+        url = ""
     # check for duplicate
     dup = g.db.query(Submission).join(Submission.submission_aux).filter(
 
@@ -453,32 +478,6 @@ Optional file data:
     else:
 
         embed = ""
-
-    # board
-    board_name = data.get("board", "general")
-    board_name = board_name.lstrip("+")
-    board_name = board_name.rstrip()
-
-    board = get_guild(board_name, graceful=True)
-
-    if not board:
-        try:
-            board = g.db.query(Board).filter_by(id=1).one()
-        except:
-            return {"error": "No default board"}, 404
-
-    if board.is_banned:
-        return {"error": f"+{board.name} has been banned"}, 403
-
-    if board.has_ban(v):
-        return {"error": f"You are exiled from +{board.name}"}, 403
-
-    if (board.restricted_posting or board.is_private) and not (
-            board.can_submit(v)):
-        return {"error": f"You must be approved to post in +{board.name}"}, 403
-
-    if board.disallowbots and request.headers.get("X-User-Type")=="Bot":
-        return {"error": f"Bots are not allowed in +{board.name}"}, 403
 
     # similarity check
     now = int(time.time())

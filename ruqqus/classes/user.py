@@ -1082,20 +1082,20 @@ class User(Base, Stndrd, Age_times):
     def json_raw(self):
         data= {'username': self.username,
                 'permalink': self.permalink,
-                'is_banned': self.is_suspended,
-                'is_premium': self.has_premium_no_renew,
-                'created_utc': self.created_utc,
+                'isBanned': self.is_suspended,
+                'isPremium': self.has_premium_no_renew,
+                'createdUtc': self.created_utc,
                 'id': self.base36id,
-                'is_private': self.is_private,
-                'profile_url': self.profile_url,
-                'banner_url': self.banner_url,
+                'isPrivate': self.is_private,
+                'avatarUrl': self.profile_url,
+                'bannerUrl': self.banner_url,
                 'title': self.title.json if self.title else None,
                 'bio': self.bio,
-                'bio_html': self.bio_html
+                'bioHtml': self.bio_html
                 }
 
         if self.real_id:
-            data['real_id']=self.real_id
+            data['realId']=self.real_id
 
         return data
 
@@ -1104,10 +1104,10 @@ class User(Base, Stndrd, Age_times):
         data = self.json_raw
 
         data["badges"]=[x.json_core for x in self.badges]
-        data['post_rep']= int(self.karma)
-        data['comment_rep']= int(self.comment_karma)
-        data['post_count']=self.post_count
-        data['comment_count']=self.comment_count
+        data['postRep']= int(self.karma)
+        data['commentRep']= int(self.comment_karma)
+        data['postCount']=self.post_count
+        data['commentCount']=self.comment_count
 
         return data
     
@@ -1118,16 +1118,17 @@ class User(Base, Stndrd, Age_times):
         if self.is_suspended:
             return {'username': self.username,
                     'permalink': self.permalink,
-                    'is_banned': True,
-                    'is_permanent_ban':not bool(self.unban_utc),
-                    'ban_reason': self.ban_reason,
+                    'avatarUrl': self.profile_url,
+                    'isBanned': True,
+                    'isPermanentBan':not bool(self.unban_utc),
+                    'banReason': self.ban_reason,
                     'id': self.base36id
                     }
 
         elif self.is_deleted:
             return {'username': self.username,
                     'permalink': self.permalink,
-                    'is_deleted': True,
+                    'isDeleted': True,
                     'id': self.base36id
                     }
         return self.json_raw
@@ -1142,10 +1143,10 @@ class User(Base, Stndrd, Age_times):
             return data
 
         data["badges"]=[x.json_core for x in self.badges]
-        data['post_rep']= int(self.karma)
-        data['comment_rep']= int(self.comment_karma)
-        data['post_count']=self.post_count
-        data['comment_count']=self.comment_count
+        data['postRep']= int(self.karma)
+        data['commentRep']= int(self.comment_karma)
+        data['postCount']=self.post_count
+        data['commentCount']=self.comment_count
 
         return data
     

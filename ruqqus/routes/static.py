@@ -16,6 +16,11 @@ from ruqqus.__main__ import app, limiter
 
 # take care of misc pages that never really change (much)
 
+
+def to_rgb(h) -> str:
+	h = h.lstrip('#')
+	return ",".join([str(x) for x in [int(h[i:i+2], 16) for i in (0, 2, 4)]])
+
 def full_url(link) -> str:
 
 	return f"{'https' if app.config.get('FORCE_HTTPS', False) else 'http'}://{environ.get('DOMAIN', 'ruqqus.localhost:8000')}{link}"
@@ -52,6 +57,7 @@ def get_site(v):
 		"hasRestrictedCommenting": bool(int(environ.get("RESTRICT_COMMENTING", False))),
 		"hasGuilds": bool(int(environ.get("ENABLE_GUILDS", False))),
 		"primaryColor": environ.get("SITE_COLOR", "ff0000"),
+		"rgb": to_rgb(environ.get("SITE_COLOR", "ff0000")),
 		"integrations": {
 			"hasUnsplash": bool(environ.get("UNSPLASH_KEY", False)),
 			"hasGumroad": bool(environ.get("GUMROAD_KEY", False)),

@@ -14,9 +14,6 @@ from ruqqus.__main__ import app
 @app.route("/api/vote/post/<pid>/<x>", methods=["POST"])
 @app.post("/api/v2/submissions/<pid>/votes/<x>")
 @is_not_banned
-@no_negative_balance("toast")
-@api("vote")
-@validate_formkey
 def api_vote_post(pid, x, v):
 
     """
@@ -51,11 +48,12 @@ URL path parameters:
 
     post = get_post(pid, v=v, no_text=True)
 
+    """
     if post.is_blocking:
         return jsonify({"error":"You can't vote on posts made by users who you are blocking."}), 403
     if post.is_blocked:
         return jsonify({"error":"You can't vote on posts made by users who are blocking you."}), 403
-
+    """
 
     if post.is_banned:
         return jsonify({"error":"That post has been removed."}), 403
@@ -68,8 +66,12 @@ URL path parameters:
     existing = g.db.query(Vote).filter_by(
         user_id=v.id, submission_id=post.id).first()
     if existing:
-        existing.change_to(x)
-        g.db.add(existing)
+        # remove vote
+        if x == 0:
+            g.db.delete(existing)
+        else:
+            existing.change_to(x)
+            g.db.add(existing)
 
     else:
         vote = Vote(user_id=v.id,

@@ -192,7 +192,7 @@ class Submission(Base, Stndrd, Age_times, Scores, Fuzzing):
         if not output:
             output = '-'
 
-        return f"/+{self.board.name}/post/{self.base36id}/{output}"
+        return f"/post/{self.base36id}/{output}"
 
     @property
     def is_archived(self):
@@ -263,6 +263,7 @@ class Submission(Base, Stndrd, Age_times, Scores, Fuzzing):
 
         comments = self.__dict__.get('_preloaded_comments',[])
         if not comments:
+            self.__dict__["replies"] = []
             return
 
         pinned_comment=[]
@@ -307,7 +308,7 @@ class Submission(Base, Stndrd, Age_times, Scores, Fuzzing):
     def thumb_url(self):
 
         if self.has_thumb:
-            return f"https://i.ruqqus.com/posts/{self.base36id}/thumb.png"
+            return f"/assets/images/{self.base36id}_thumb.png"
         elif self.is_image:
             return self.url
         else:
@@ -345,71 +346,73 @@ class Submission(Base, Stndrd, Age_times, Scores, Fuzzing):
     @property
 
     def json_raw(self):
-        data = {'author_name': self.author.username if not self.author.is_deleted else None,
+        data = {'authorName': self.author.username if not self.author.is_deleted else None,
                 'permalink': self.permalink,
-                'is_banned': bool(self.is_banned),
-                'is_deleted': self.is_deleted,
-                'created_utc': self.created_utc,
+                'isBanned': bool(self.is_banned),
+                'isDeleted': self.is_deleted,
+                'createdUtc': self.created_utc,
                 'id': self.base36id,
                 'fullname': self.fullname,
                 'title': self.title,
-                'is_nsfw': self.over_18,
-                'is_nsfl': self.is_nsfl,
-                'is_bot': self.is_bot,
-                'thumb_url': self.thumb_url,
+                'isNsfw': self.over_18,
+                'isNsfl': self.is_nsfl,
+                'isBot': self.is_bot,
+                'thumbUrl': self.thumb_url,
                 'domain': self.domain,
-                'is_archived': self.is_archived,
+                'isArchived': self.is_archived,
                 'url': self.url,
                 'body': self.body,
-                'body_html': self.body_html,
-                'created_utc': self.created_utc,
-                'edited_utc': self.edited_utc or 0,
-                'guild_name': self.board.name,
-                'original_guild_name': self.original_board.name if not self.board_id == self.original_board_id else None,
-                'original_guild_id': self.original_board.id if not self.board_id == self.original_board_id else None,
-                'guild_id': base36encode(self.board_id),
-                'comment_count': self.comment_count,
+                'bodyHtml': self.body_html,
+                'editedUtc': self.edited_utc or 0,
+                'guildName': self.board.name,
+                'originalGuildName': self.original_board.name if not self.board_id == self.original_board_id else None,
+                'originalGuildId': self.original_board.id if not self.board_id == self.original_board_id else None,
+                'guildId': base36encode(self.board_id),
+                'commentCount': self.comment_count,
                 'score': self.score_fuzzed,
                 'upvotes': self.upvotes_fuzzed,
                 'downvotes': self.downvotes_fuzzed,
-                'award_count': self.award_count,
-                'is_offensive': self.is_offensive,
-                'meta_title': self.meta_title,
-                'meta_description': self.meta_description,
-                'is_pinned': self.is_pinned,
-                'is_distinguished': bool(self.distinguish_level),
-                'is_heralded': bool(self.gm_distinguish),
-                'is_crosspost': self.is_crosspost,
-                'herald_guild': self.distinguished_board.name if self.gm_distinguish else None
+                'totalScore': self.score_fuzzed,
+                'totalUpvotes': self.upvotes_fuzzed,
+                'totalDownvotes': self.downvotes_fuzzed,
+                'awardCount': self.award_count,
+                'isOffensive': self.is_offensive,
+                'metaTitle': self.meta_title,
+                'metaDescription': self.meta_description,
+                'isPinned': self.is_pinned,
+                'isDistinguished': bool(self.distinguish_level),
+                'isHeralded': bool(self.gm_distinguish),
+                'isCrosspost': self.is_crosspost,
+                'heraldGuild': self.distinguished_board.name if self.gm_distinguish else None
                 }
         if self.ban_reason:
-            data["ban_reason"]=self.ban_reason
+            data["banReason"]=self.ban_reason
 
         if self.board_id != self.original_board_id and self.original_board:
-            data['original_guild_name'] = self.original_board.name
-            data['original_guild_id'] = base36encode(self.original_board_id)
+            data['originalGuildName'] = self.original_board.name
+            data['originalGuildId'] = base36encode(self.original_board_id)
         return data
 
     @property
     def json_core(self):
 
         if self.is_banned:
-            return {'is_banned': True,
-                    'is_deleted': self.is_deleted,
-                    'ban_reason': self.ban_reason,
+            return {'isBanned': True,
+                    'isDeleted': self.is_deleted,
+                    'banReason': self.ban_reason,
                     'id': self.base36id,
                     'title': self.title,
                     'permalink': self.permalink,
-                    'guild_name': self.board.name,
-                    'is_pinned': self.is_pinned
+                    'guildName': self.board.name,
+                    'isPinned': self.is_pinned
                     }
         elif self.is_deleted:
-            return {'is_banned': bool(self.is_banned),
-                    'is_deleted': True,
+            return {'isBanned': bool(self.is_banned),
+                    'isDeleted': True,
                     'id': self.base36id,
                     'title': self.title,
                     'permalink': self.permalink,
-                    'guild_name': self.board.name
+                    'guildName': self.board.name
                     }
 
         return self.json_raw
@@ -424,14 +427,19 @@ class Submission(Base, Stndrd, Age_times, Scores, Fuzzing):
 
         data["author"]=self.author.json_core
         data["guild"]=self.board.json_core
-        data["original_guild"]=self.original_board.json_core if not self.board_id==self.original_board_id else None
-        data["comment_count"]: self.comment_count
+        data["originalGuild"]=self.original_board.json_core if not self.board_id==self.original_board_id else None
+        data["commentCount"]: self.comment_count
 
     
         if "replies" in self.__dict__:
             data["replies"]=[x.json_core for x in self.replies]
 
         if "_voted" in self.__dict__:
+            data["score"] -= self._voted
+            if self._voted > 0:
+                data["upvotes"] -=1
+            else:
+                data["downvotes"] -= 1
             data["voted"] = self._voted
 
         return data

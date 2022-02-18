@@ -125,7 +125,6 @@ app.config["SERVER_NAME"] = SERVER_NAME #DomainMatcher(SERVER_NAME, ONION_NAME)
 
 
 app.config["SHORT_DOMAIN"]=environ.get("SHORT_DOMAIN","").lstrip().rstrip()
-app.config["SESSION_COOKIE_NAME"] = "session_ruqqus"
 app.config["VERSION"] = _version
 app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024
 app.config["SESSION_COOKIE_SECURE"] = bool(int(environ.get("FORCE_HTTPS", 1)))
@@ -374,6 +373,8 @@ def drop_connection():
 @app.before_request
 def before_request():
 
+    print(f"{request.method} {request.path}")
+
     if request.method.lower() != "get" and app.config["READ_ONLY"] and request.path != "/login":
         return jsonify({"error":f"{app.config['SITE_NAME']} is currently in read-only mode."}), 400
 
@@ -403,9 +404,6 @@ def before_request():
             "http://") and "localhost" not in app.config["SERVER_NAME"]:
         url = request.url.replace("http://", "https://", 1)
         return redirect(url, code=301)
-
-    if not session.get("session_id"):
-        session["session_id"] = secrets.token_hex(16)
 
     ua=request.headers.get("User-Agent","")
     if "CriOS/" in ua:

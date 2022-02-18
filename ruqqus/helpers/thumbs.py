@@ -208,14 +208,14 @@ def thumbnail_thread(pid, debug=False):
 
     print_(f"Have image, uploading")
 
-    name = f"posts/{post.base36id}/thumb.png"
+    name = f"ruqqus/assets/images/{post.base36id}_thumb.png"
     tempname = name.replace("/", "_")
 
-    with open(tempname, "wb") as file:
+    with open(name, "wb+") as file:
         for chunk in image_req.iter_content(1024):
             file.write(chunk)
 
-    aws.upload_from_file(name, tempname, resize=(375, 227))
+    #aws.upload_from_file(name, tempname, resize=(375, 227))
     post.has_thumb = True
     db.add(post)
 

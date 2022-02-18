@@ -112,3 +112,4 @@ package-lock.json
 local.txt
 *.scssc
 .env.sh
+*_thumb.png

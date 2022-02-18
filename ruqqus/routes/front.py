@@ -218,7 +218,7 @@ def frontlist(v=None, sort=None, page=1, nsfw=False, nsfl=False,
             Board.subcat_id.notin_([44, 108]) 
             )
 
-    posts=posts.filter(Submission.board_id!=1)
+    #posts=posts.filter(Submission.board_id!=1)
 
     posts=posts.options(contains_eager(Submission.board))
 
@@ -450,6 +450,7 @@ Optional query parameters:
     # check existence of next page
     next_exists = (len(posts) == 26)
     posts = posts[0:25]
+    posts = get_posts(posts, sort=sort, v=v)
 
    # If page 1, check for sticky
     if page == 1 and not ignore_pinned:
