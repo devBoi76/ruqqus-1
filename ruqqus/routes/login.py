@@ -305,12 +305,14 @@ def sign_up_post():
             ban_evade =  int(any([x.is_suspended for x in g.db.query(User).filter(User.id.in_(tuple(session.get("history", [])))).all() if x]))
             )
 
+        g.db.add(new_user)
+        g.db.commit()
+
     except Exception as e:
         #print(e)
         return {"error": "Please enter a valid email"}, 400
 
-    g.db.add(new_user)
-    g.db.commit()
+    
 
     # check alts
 

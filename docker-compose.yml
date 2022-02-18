@@ -5,7 +5,7 @@ services:
     build:
       context: .
     volumes:
-      - "./:/ruqqus/service"
+      - "./:/service"
     environment:
       - domain=localhost
       - REDIS_URL=redis://redis
